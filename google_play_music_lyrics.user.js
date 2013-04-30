@@ -80,7 +80,7 @@ GooglePlayMusicLyricsFetcher.prototype.fetchSong = function() {
 
       var offlineLyrics = window.localStorage.getItem(artist+"|"+song);
       if (offlineLyrics) {
-        $('#gpml_lyrics_content').html(offlineLyrics+"[LocalStorage]");
+        $('#gpml_lyrics_content').html(offlineLyrics);
       } else {
         $('#gpml_lyrics_content').html('<em>Sarching for lyrics...</em>');
 
@@ -133,7 +133,7 @@ LyricsWikiPlugin.prototype.parseLyrics = function(responseText) {
   $('div', lyrics).each(function() {$(this).remove()});
   $('span', lyrics).each(function() {$(this).remove()});
   lyrics = $(lyrics).html();
-  return lyrics+"<br/>[LW]";
+  return lyrics;
 }
 
  // Terra
@@ -149,7 +149,7 @@ TerraPlugin.prototype.getMethod = function() {
 TerraPlugin.prototype.parseLyrics = function(responseText) {
   var lyrics = $('#letra > p', responseText);
   lyrics = $(lyrics).html();
-  return lyrics+"<br/>[TERRA]";
+  return lyrics;
 }
 
 /**************

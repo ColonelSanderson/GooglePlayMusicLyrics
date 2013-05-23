@@ -16,8 +16,14 @@
 // @grant          GM_xmlhttpRequest
 // ==/UserScript==
 
+var DEBUG = false;
+
 function capitalizeFirstLetterEachWord(str) {
     return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
+}
+
+function endsWith(str, suffix) {
+    return str.indexOf(suffix, str.length - suffix.length) !== -1;
 }
 
 function GooglePlayMusicLyricsFetcherPlugin() {}
@@ -36,7 +42,7 @@ GooglePlayMusicLyricsFetcher.prototype.addPlugin = function(plugin) {
   this.plugins.push(plugin);
 }
 
-GooglePlayMusicLyricsFetcher.prototype.saveLyrics = function(song, album, artist, lyrics) {
+GooglePlayMusicLyricsFetcher.prototype.saveLyrics = function(artist, album, song, lyrics) {
   window.localStorage.setItem(artist+"|"+album+"|"+song, lyrics);
 }
 
@@ -44,7 +50,8 @@ GooglePlayMusicLyricsFetcher.prototype.usePlugin = function(pluginIndex, artist,
   if (song != this.currentSong || artist != this.currentArtist) return; //track has changed
   var plugin = this.plugins[pluginIndex];
   if (plugin) {
-    var url = plugin.getUrl(song, album, artist);   
+	if (DEBUG) console.log('Using plugin '+(pluginIndex+1)+"/"+this.plugins.length);
+    var url = plugin.getUrl(artist, album, song);   
 
     var thisFetcher = this;
 
@@ -54,15 +61,18 @@ GooglePlayMusicLyricsFetcher.prototype.usePlugin = function(pluginIndex, artist,
         url: url,
         onload: function(response) {
           var data = response.responseText;
+		  var lyrics = null;
           if (data) {            
-            var lyrics = plugin.parseLyrics(data);
+            lyrics = plugin.parseLyrics(data, artist, album, song);
             if (lyrics) {
-              thisFetcher.saveLyrics(song, album, artist, lyrics);
+              thisFetcher.saveLyrics(artist, album, song, lyrics);
               $('#gpml_lyrics_content').html(lyrics);
               return;
             }
           }
-          thisFetcher.usePlugin(pluginIndex + 1, song, album, artist);
+		  if (!lyrics) {		  
+            thisFetcher.usePlugin(pluginIndex + 1, artist, album, song);
+		  }
         }
       });  
     }
@@ -86,7 +96,7 @@ GooglePlayMusicLyricsFetcher.prototype.fetchSong = function() {
       if (offlineLyrics) {
         $('#gpml_lyrics_content').html(offlineLyrics);
       } else {
-        $('#gpml_lyrics_content').html('<em>Sarching for lyrics...</em>');
+        $('#gpml_lyrics_content').html('<em>Searching for lyrics...</em>');
 
         this.usePlugin(0, artist, album, song);      
       }
@@ -104,7 +114,7 @@ GooglePlayMusicLyricsFetcher.prototype.init = function() {
   $('#content-container').css('margin-right', '300px');
   $('#content-container').before(
     '<div id="gpml_lyrics_container" style="float: right; width: 295px; margin-left: 5px; background-color: #ffffff;">'+
-      '<div id="gpml_lyrics_header" style="padding: 19px 0 0 20px; font-size: 15px; border-bottom: 1px solid #D8D7D9; color: #ED8335; font-weight: 700;">LYRICS</div>'+
+      '<div id="gpml_lyrics_header" style="padding: 14px 0 0 26px; color: #747474; font-size: 24px; font-weight: 300; text-transform: none; border-bottom: 1px solid #D8D7D9; cursor: default;">Lyrics</div>'+
       '<div id="gpml_lyrics_content" style="padding: 15px; overflow-y:auto;">'+
         '<em>No song currently playing</em>'+
       '</div>'+      
@@ -112,7 +122,7 @@ GooglePlayMusicLyricsFetcher.prototype.init = function() {
     
   var mutationObserver = new MutationObserver(function(mutations) {
         $('#gpml_lyrics_container').height($('#content-container').height());
-        $('#gpml_lyrics_content').height($('#content-container').height() - 70);
+        $('#gpml_lyrics_content').height($('#content-container').height() - 80);
       });
   
   mutationObserver.observe(document.querySelector('#content-container'), { attributes: true });
@@ -124,15 +134,16 @@ GooglePlayMusicLyricsFetcher.prototype.init = function() {
  **************/
  // Lyrics Wiki
 function LyricsWikiPlugin() {}
-LyricsWikiPlugin.prototype.getUrl = function(song, album, artist) {      
+LyricsWikiPlugin.prototype.getUrl = function(artist, album, song) {      
   song = capitalizeFirstLetterEachWord(song).replace(/ /g, '_').replace(/,/g, '');
   artist = capitalizeFirstLetterEachWord(artist).replace(/ /g, '_').replace(/,/g, ''); 
+  if (DEBUG) console.log("URL [WIKI]: "+'http://lyrics.wikia.com/'+artist+':'+song);
   return 'http://lyrics.wikia.com/'+artist+':'+song;  
 }
 LyricsWikiPlugin.prototype.getMethod = function() {
   return "GET";
 }
-LyricsWikiPlugin.prototype.parseLyrics = function(responseText) {
+LyricsWikiPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
   var lyrics = $('.lyricbox', responseText);
   $('div', lyrics).each(function() {$(this).remove()});
   $('span', lyrics).each(function() {$(this).remove()});
@@ -142,18 +153,42 @@ LyricsWikiPlugin.prototype.parseLyrics = function(responseText) {
 
  // Terra
 function TerraPlugin() {}
-TerraPlugin.prototype.getUrl = function(song, album, artist) {      
+TerraPlugin.prototype.getUrl = function(artist, album, song) {      
   song = escape(song.replace(/,/g, ''));
   artist = escape(artist.replace(/,/g, '')); 
+  if (DEBUG) console.log("URL [TERRA]: "+"http://letras.mus.br/winamp.php?musica=" + song + "&artista=" + artist);
   return "http://letras.mus.br/winamp.php?musica=" + song + "&artista=" + artist; 
 }
 TerraPlugin.prototype.getMethod = function() {
   return "GET";
 }
-TerraPlugin.prototype.parseLyrics = function(responseText) {
+TerraPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
   var lyrics = $('#letra > p', responseText);
   lyrics = $(lyrics).html();
   return lyrics;
+}
+
+ // Dark Lyrics
+function DarkLyricsPlugin() {}
+DarkLyricsPlugin.prototype.getUrl = function(artist, album, song) {      
+  album = escape(album.replace(/,/g, '').replace(/ /g, '').toLowerCase());
+  artist = escape(artist.replace(/,/g, '').replace(/ /g, '').toLowerCase());
+  if (DEBUG) console.log("DARKURL -> http://www.darklyrics.com/lyrics/"+artist+"/"+album+".html");
+  return "http://www.darklyrics.com/lyrics/"+artist+"/"+album+".html"; 
+}
+DarkLyricsPlugin.prototype.getMethod = function() {
+  return "GET";
+}
+DarkLyricsPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
+  var lyrics = $('div.lyrics', responseText).html();
+  var searchFor = song+"</a></h3><br>\n";
+  var pieceStart = lyrics.indexOf(searchFor);
+  if (pieceStart == -1) return null;
+  var pieceEnd = lyrics.indexOf("<br>\n<h3>", pieceStart);
+  if (pieceEnd == -1) {
+	pieceEnd = lyrics.indexOf("<br>\n\n", pieceStart)
+  }
+  return lyrics.substring(pieceStart+searchFor.length, pieceEnd);
 }
 
 /**************
@@ -162,6 +197,7 @@ TerraPlugin.prototype.parseLyrics = function(responseText) {
 var fetcher = new GooglePlayMusicLyricsFetcher();
 fetcher.addPlugin(new LyricsWikiPlugin());
 fetcher.addPlugin(new TerraPlugin());
+fetcher.addPlugin(new DarkLyricsPlugin());
 
 $(document).ready(function() {
   fetcher.init();

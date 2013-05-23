@@ -14,6 +14,7 @@ To install the script directly use [this link][3].
 Currently supported lyric sources are:
 * Lyrics wiki
 * Terra
+* Dark Lyrics
 
 More will be added in a later date.
 

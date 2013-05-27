@@ -115,7 +115,7 @@ GooglePlayMusicLyricsFetcher.prototype.init = function() {
   $('#content-container').before(
     '<div id="gpml_lyrics_container" style="float: right; width: 295px; margin-left: 5px; background-color: #ffffff;">'+
       '<div id="gpml_lyrics_header" style="padding: 14px 0 0 26px; color: #747474; font-size: 24px; font-weight: 300; text-transform: none; border-bottom: 1px solid #D8D7D9; cursor: default;">Lyrics</div>'+
-      '<div id="gpml_lyrics_content" style="padding: 15px; overflow-y:auto;">'+
+      '<div id="gpml_lyrics_content" style="padding: 15px; overflow-y:auto; user-select: text; -moz-user-select: text; -webkit-user-select: text; -ms-user-select: text;">'+
         '<em>No song currently playing</em>'+
       '</div>'+      
     '</div>');

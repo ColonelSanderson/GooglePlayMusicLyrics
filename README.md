@@ -18,6 +18,9 @@ Currently supported lyric sources are:
 
 More will be added in a later date.
 
+Here's how it looks like (you can resize the lyrics panel):
+![Screenshot](https://raw.github.com/BeowulfBjornson/GooglePlayMusicLyrics/master/screenshot.png)
+
 License
 =======
 

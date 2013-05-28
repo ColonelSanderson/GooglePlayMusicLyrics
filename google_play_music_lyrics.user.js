@@ -198,7 +198,9 @@ LyricsWikiPlugin.prototype.getMethod = function() {
 }
 LyricsWikiPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
   var lyrics = $('.lyricbox', responseText);
+  if (lyrics.length != 1) return null;
   $('div', lyrics).each(function() {$(this).remove()});
+  $('p', lyrics).each(function() {$(this).remove()});
   $('span', lyrics).each(function() {$(this).remove()});
   lyrics = $(lyrics).html();
   return lyrics;

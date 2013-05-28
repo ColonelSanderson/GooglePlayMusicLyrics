@@ -33,6 +33,42 @@ function GooglePlayMusicLyricsFetcher() {
   this.currentArtist = "";
   this.currentAlbum = "";
   this.plugins = [];
+  
+  //Resizing stuff
+  this.resizing = false;
+  this.startX = 0.0;
+  this.currentX = 0.0;
+  this.mouseMoveEvent = null;  
+  
+  var thisFetcher = this;  
+  
+  this.mouseUpEvent = function() {
+    if (DEBUG) console.log('Mouseup on resizer');
+    thisFetcher.originalContainerSize = $('#gpml_lyrics_container').width(); 
+    thisFetcher.currentX = 0.0;
+    
+    window.localStorage.setItem('[config]lyrics-pane-width', $('#gpml_lyrics_container').width());
+    
+    $('body').unbind('mouseup', thisFetcher.mouseUpEvent);
+    $('body').unbind('mousemove', thisFetcher.mouseMoveEvent);
+  };
+  this.mouseMoveEvent = function(event) {
+    if (DEBUG) console.log('Mousemove on resizer.');
+    
+    var totalDelta = thisFetcher.startX - event.pageX;
+    if(!thisFetcher.resizing && Math.abs(totalDelta) >= 30) {
+        thisFetcher.resizing = true;
+        thisFetcher.currentX = thisFetcher.startX;
+    }
+    
+    var currentDelta = Math.abs(thisFetcher.currentX - event.pageX);
+    if (DEBUG) console.log('Delta => '+currentDelta+', X = '+event.pageX);
+    if (thisFetcher.resizing && currentDelta >= 2) {    
+      $('#gpml_lyrics_container').width(thisFetcher.originalContainerSize + totalDelta);
+      $('#content-container').css('margin-right', thisFetcher.originalContainerSize + totalDelta);
+      thisFetcher.currentX = event.pageX;
+    }
+  };
 }
 
 /**************
@@ -110,17 +146,34 @@ GooglePlayMusicLyricsFetcher.prototype.fetchSong = function() {
   }, 500);
 }
 
-GooglePlayMusicLyricsFetcher.prototype.init = function() { 
-  $('#content-container').css('margin-right', '300px');
+GooglePlayMusicLyricsFetcher.prototype.init = function() {
+  var paneWidth = window.localStorage.getItem('[config]lyrics-pane-width'); 
+  if (!paneWidth) {
+    paneWidth = 300;
+  }
+
+  $('#content-container').css('margin-right', paneWidth+'px');
   $('#content-container').before(
-    '<div id="gpml_lyrics_container" style="float: right; width: 295px; margin-left: 5px; background-color: #ffffff;">'+
+    '<div id="gpml_lyrics_container" style="float: right; width: '+paneWidth+'px; background-color: #FFFFFF;">'+    
+      '<div id="gpml_lyrics_resizer" style="float: left; width: 3px; cursor: ew-resize; background-color: #E5E5E5;">&nbsp;</div>'+
       '<div id="gpml_lyrics_header" style="padding: 14px 0 0 26px; color: #747474; font-size: 24px; font-weight: 300; text-transform: none; border-bottom: 1px solid #D8D7D9; cursor: default;">Lyrics</div>'+
       '<div id="gpml_lyrics_content" style="padding: 15px; overflow-y:auto; user-select: text; -moz-user-select: text; -webkit-user-select: text; -ms-user-select: text;">'+
         '<em>No song currently playing</em>'+
       '</div>'+      
     '</div>');
+  
+  var thisFetcher = this;
+  
+  $('#gpml_lyrics_resizer').mousedown(function(event) {
+    thisFetcher.startX = event.pageX;    
+    thisFetcher.originalContainerSize = $('#gpml_lyrics_container').width();
+  
+    $('body').bind('mousemove', thisFetcher.mouseMoveEvent);
+    $('body').bind('mouseup', thisFetcher.mouseUpEvent);
+  });
     
   var mutationObserver = new MutationObserver(function(mutations) {
+        $('#gpml_lyrics_resizer').height($('#content-container').height());
         $('#gpml_lyrics_container').height($('#content-container').height());
         $('#gpml_lyrics_content').height($('#content-container').height() - 80);
       });

@@ -118,9 +118,9 @@ GooglePlayMusicLyricsFetcher.prototype.usePlugin = function(pluginIndex, artist,
 }
 
 GooglePlayMusicLyricsFetcher.prototype.fetchSong = function() {
-  var song = $('div#playerSongTitle > div.fade-out-content').html();
+  var song = $('div#playerSongTitle').html();
   var artist = $('div#player-artist').html();
-  var album = $('div#playerSongInfo > div > div > div.player-album').html();
+  var album = $('div.player-artist-album-wrapper > div.player-album').html();
   
   if (song && artist && album) {
     if (this.currentSong != song || this.currentArtist != artist || this.currentAlbum != album) {

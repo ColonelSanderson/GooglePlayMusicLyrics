@@ -178,7 +178,7 @@ GooglePlayMusicLyricsFetcher.prototype.init = function() {
         $('#gpml_lyrics_content').height($('#content-container').height() - 80);
       });
   
-  mutationObserver.observe(document.querySelector('#content-container'), { attributes: true });
+  mutationObserver.observe(document.querySelector('#doc'), { attributes: true });
   
 }
 

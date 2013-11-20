@@ -26,6 +26,23 @@ function endsWith(str, suffix) {
     return str.indexOf(suffix, str.length - suffix.length) !== -1;
 }
 
+function separateInVerses(lyrics) {
+  var verses = lyrics.split("\n\n");
+  
+  var result = "";
+  
+  verses.forEach(function(verse) {
+    result += '<div class="verse">';
+    var lines = verse.split("\n");
+    lines.forEach(function(line) {
+      result += "<p>" + line.trim() + "</p>";
+    });
+    result += "</div>"
+  });
+  
+  return result;
+}
+
 function GooglePlayMusicLyricsFetcherPlugin() {}
 
 function GooglePlayMusicLyricsFetcher() {
@@ -151,13 +168,24 @@ GooglePlayMusicLyricsFetcher.prototype.init = function() {
   if (!paneWidth) {
     paneWidth = 300;
   }
+  
+  $('head').append(
+    '<style>\n'+
+        '#gpml_lyrics_container {float: right; background-color: #FFFFFF;}\n'+
+        '#gpml_lyrics_resizer {float: left; width: 3px; cursor: ew-resize; background-color: #E5E5E5;}\n'+
+        '#gpml_lyrics_header {padding: 14px 0 0 26px; color: #747474; font-size: 24px; font-weight: 300; text-transform: none; border-bottom: 1px solid #D8D7D9; cursor: default;}\n'+
+        '#gpml_lyrics_content {padding: 15px; overflow-y:auto; user-select: text; -moz-user-select: text; -webkit-user-select: text; -ms-user-select: text;}\n'+
+        '#gpml_lyrics_content .verse {margin-bottom: 12px;}\n'+
+        '#gpml_lyrics_content .verse p {margin: 0;}\n'+
+    '</style>'
+  );
 
   $('#content-container').css('margin-right', paneWidth+'px');
   $('#content-container').before(
-    '<div id="gpml_lyrics_container" style="float: right; width: '+paneWidth+'px; background-color: #FFFFFF;">'+    
-      '<div id="gpml_lyrics_resizer" style="float: left; width: 3px; cursor: ew-resize; background-color: #E5E5E5;">&nbsp;</div>'+
-      '<div id="gpml_lyrics_header" style="padding: 14px 0 0 26px; color: #747474; font-size: 24px; font-weight: 300; text-transform: none; border-bottom: 1px solid #D8D7D9; cursor: default;">Lyrics</div>'+
-      '<div id="gpml_lyrics_content" style="padding: 15px; overflow-y:auto; user-select: text; -moz-user-select: text; -webkit-user-select: text; -ms-user-select: text;">'+
+    '<div id="gpml_lyrics_container" style="width: '+paneWidth+'px;">'+    
+      '<div id="gpml_lyrics_resizer">&nbsp;</div>'+
+      '<div id="gpml_lyrics_header">Lyrics</div>'+
+      '<div id="gpml_lyrics_content">'+
         '<em>No song currently playing</em>'+
       '</div>'+      
     '</div>');
@@ -199,11 +227,15 @@ LyricsWikiPlugin.prototype.getMethod = function() {
 LyricsWikiPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
   var lyrics = $('.lyricbox', responseText);
   if (lyrics.length != 1) return null;
+  
   $('div', lyrics).each(function() {$(this).remove()});
   $('p', lyrics).each(function() {$(this).remove()});
   $('span', lyrics).each(function() {$(this).remove()});
-  lyrics = $(lyrics).html();
-  return lyrics;
+  lyrics = $(lyrics).html();  
+  
+  lyrics = lyrics.replace(/\n/g, "").replace(/<!--.*?-->/gm, "").trim().replace(/<br.*?>/g, "\n").trim().replace(/<.+?>.+?<\/.+?>/g, "");
+  
+  return separateInVerses(lyrics);
 }
 
  // Terra
@@ -220,7 +252,10 @@ TerraPlugin.prototype.getMethod = function() {
 TerraPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
   var lyrics = $('#letra > p', responseText);
   lyrics = $(lyrics).html();
-  return lyrics;
+  if (!lyrics) return;
+  lyrics = lyrics.replace(/\n/g, "").replace(/<br.*?>/g, "\n").replace(/<.+?>.+?<\/.+?>/g, "");
+  
+  return separateInVerses(lyrics)
 }
 
  // Dark Lyrics
@@ -236,6 +271,7 @@ DarkLyricsPlugin.prototype.getMethod = function() {
 }
 DarkLyricsPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
   var lyrics = $('div.lyrics', responseText).html();
+  if (!lyrics) return;
   var searchFor = song+"</a></h3><br>\n";
   var pieceStart = lyrics.indexOf(searchFor);
   if (pieceStart == -1) return null;
@@ -243,16 +279,19 @@ DarkLyricsPlugin.prototype.parseLyrics = function(responseText, artist, album, s
   if (pieceEnd == -1) {
 	pieceEnd = lyrics.indexOf("<br>\n\n", pieceStart)
   }
-  return lyrics.substring(pieceStart+searchFor.length, pieceEnd);
+  lyrics = lyrics.substring(pieceStart+searchFor.length, pieceEnd);
+  lyrics = lyrics.replace(/\n/g, "").replace(/<br.*?>/g, "\n").replace(/<.+?>.+?<\/.+?>/g, "");
+  
+  return separateInVerses(lyrics);
 }
 
 /**************
  * RUNTIME
  **************/
 var fetcher = new GooglePlayMusicLyricsFetcher();
-fetcher.addPlugin(new LyricsWikiPlugin());
 fetcher.addPlugin(new TerraPlugin());
 fetcher.addPlugin(new DarkLyricsPlugin());
+fetcher.addPlugin(new LyricsWikiPlugin());
 
 $(document).ready(function() {
   fetcher.init();

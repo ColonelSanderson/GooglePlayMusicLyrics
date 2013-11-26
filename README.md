@@ -15,6 +15,8 @@ Currently supported lyric sources are:
 * Lyrics wiki
 * Terra
 * Dark Lyrics
+* Az Lyrics
+* Metro Lyrics
 
 More will be added in a later date.
 

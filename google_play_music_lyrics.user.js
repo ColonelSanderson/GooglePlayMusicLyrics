@@ -22,6 +22,10 @@ function capitalizeFirstLetterEachWord(str) {
     return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
 }
 
+function removeNonRegularLetters(str) {
+    return str.replace(/[^a-zA-Z]/g,'');
+}
+
 function endsWith(str, suffix) {
     return str.indexOf(suffix, str.length - suffix.length) !== -1;
 }
@@ -218,8 +222,9 @@ function LyricsWikiPlugin() {}
 LyricsWikiPlugin.prototype.getUrl = function(artist, album, song) {      
   song = capitalizeFirstLetterEachWord(song).replace(/ /g, '_').replace(/,/g, '');
   artist = capitalizeFirstLetterEachWord(artist).replace(/ /g, '_').replace(/,/g, ''); 
-  if (DEBUG) console.log("URL [WIKI]: "+'http://lyrics.wikia.com/'+artist+':'+song);
-  return 'http://lyrics.wikia.com/'+artist+':'+song;  
+  var url = 'http://lyrics.wikia.com/'+artist+':'+song;
+  if (DEBUG) console.log("URL [WIKI]: "+url);
+  return url;  
 }
 LyricsWikiPlugin.prototype.getMethod = function() {
   return "GET";
@@ -242,9 +247,10 @@ LyricsWikiPlugin.prototype.parseLyrics = function(responseText, artist, album, s
 function TerraPlugin() {}
 TerraPlugin.prototype.getUrl = function(artist, album, song) {      
   song = escape(song.replace(/,/g, ''));
-  artist = escape(artist.replace(/,/g, '')); 
-  if (DEBUG) console.log("URL [TERRA]: "+"http://letras.mus.br/winamp.php?musica=" + song + "&artista=" + artist);
-  return "http://letras.mus.br/winamp.php?musica=" + song + "&artista=" + artist; 
+  artist = escape(artist.replace(/,/g, ''));
+  var url = "http://letras.mus.br/winamp.php?musica=" + song + "&artista=" + artist;
+  if (DEBUG) console.log("URL [TERRA]: "+ url);
+  return url; 
 }
 TerraPlugin.prototype.getMethod = function() {
   return "GET";
@@ -261,10 +267,11 @@ TerraPlugin.prototype.parseLyrics = function(responseText, artist, album, song) 
  // Dark Lyrics
 function DarkLyricsPlugin() {}
 DarkLyricsPlugin.prototype.getUrl = function(artist, album, song) {      
-  album = escape(album.replace(/,/g, '').replace(/ /g, '').toLowerCase());
-  artist = escape(artist.replace(/,/g, '').replace(/ /g, '').toLowerCase());
-  if (DEBUG) console.log("DARKURL -> http://www.darklyrics.com/lyrics/"+artist+"/"+album+".html");
-  return "http://www.darklyrics.com/lyrics/"+artist+"/"+album+".html"; 
+  album = removeNonRegularLetters(escape(album.replace(/,/g, '').replace(/ /g, '').toLowerCase()));
+  artist = removeNonRegularLetters(escape(artist.replace(/,/g, '').replace(/ /g, '').toLowerCase()));
+  var url = "http://www.darklyrics.com/lyrics/"+artist+"/"+album+".html";
+  if (DEBUG) console.log("DARKURL -> " + url);
+  return url; 
 }
 DarkLyricsPlugin.prototype.getMethod = function() {
   return "GET";
@@ -285,13 +292,68 @@ DarkLyricsPlugin.prototype.parseLyrics = function(responseText, artist, album, s
   return separateInVerses(lyrics);
 }
 
+// Az Lyrics
+function AzLyricsPlugin() {}
+AzLyricsPlugin.prototype.getUrl = function(artist, album, song) {      
+  song = removeNonRegularLetters(escape(song.replace(/,/g, '').replace(/ /g, '').toLowerCase()));
+  artist = removeNonRegularLetters(escape(artist.replace(/,/g, '').replace(/ /g, '').toLowerCase()));
+  var url = "http://www.azlyrics.com/lyrics/"+artist+"/"+song+".html";
+  if (DEBUG) console.log("AZ URL -> " + url);
+  return url; 
+}
+AzLyricsPlugin.prototype.getMethod = function() {
+  return "GET";
+}
+AzLyricsPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
+  var lyrics = responseText;
+  
+  var searchFor = "<!-- start of lyrics -->";
+  var pieceStart = lyrics.indexOf(searchFor);
+  if (pieceStart == -1) return null;
+  var pieceEnd = lyrics.indexOf("<!-- end of lyrics -->", pieceStart);
+  if (pieceEnd == -1) {
+	return null;
+  }
+  lyrics = lyrics.substring(pieceStart+searchFor.length, pieceEnd);
+  
+  lyrics = lyrics.replace(/\n/g, "").replace(/<!--.*?-->/gm, "").replace(/<br.*?>/g, "\n").replace(/<.+?>.+?<\/.+?>/g, "").trim();
+  
+  return separateInVerses(lyrics);
+}
+
+// MetroLyrics
+function MetroLyricsPlugin() {}
+MetroLyricsPlugin.prototype.getUrl = function(artist, album, song) {      
+  song = song.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9\-]/g, '').trim();
+  artist = artist.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9\-]/g, '').trim();
+  var url = "http://www.metrolyrics.com/"+song+"-lyrics-"+artist+".html";
+  if (DEBUG) console.log("METRO URL -> " + url);
+  return url; 
+}
+MetroLyricsPlugin.prototype.getMethod = function() {
+  return "GET";
+}
+MetroLyricsPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
+  var verses = $('div#lyrics-body > div.lyrics-body > p.verse', responseText);
+  if (verses.length <= 0) return;
+  var lyrics = "";
+  $(verses).each(function(index, verse) {
+    lyrics += (lyrics == "" ? "" : '<br /><br />') + $(verse).html();
+  });
+  lyrics = lyrics.replace(/\n/g, "").replace(/<!--.*?-->/gm, "").replace(/<br.*?>/g, "\n").replace(/<.+?>.+?<\/.+?>/g, "").trim();
+  
+  return separateInVerses(lyrics);
+}
+
 /**************
  * RUNTIME
  **************/
 var fetcher = new GooglePlayMusicLyricsFetcher();
-fetcher.addPlugin(new TerraPlugin());
-fetcher.addPlugin(new DarkLyricsPlugin());
 fetcher.addPlugin(new LyricsWikiPlugin());
+fetcher.addPlugin(new TerraPlugin());
+fetcher.addPlugin(new MetroLyricsPlugin());
+fetcher.addPlugin(new DarkLyricsPlugin());
+fetcher.addPlugin(new AzLyricsPlugin());
 
 $(document).ready(function() {
   fetcher.init();

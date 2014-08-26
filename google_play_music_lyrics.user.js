@@ -17,6 +17,7 @@
 // ==/UserScript==
 
 var DEBUG = false;
+var OLLyrics = true; //Determines whether to use offline lyrics. Helps with debugging.
 
 function capitalizeFirstLetterEachWord(str) {
     return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
@@ -149,15 +150,17 @@ GooglePlayMusicLyricsFetcher.prototype.fetchSong = function() {
       this.currentArtist = artist;
       this.currentAlbum = album;
 
-      var offlineLyrics = window.localStorage.getItem(artist+"|"+album+"|"+song);
-      if (offlineLyrics) {
+      
+	  var offlineLyrics = window.localStorage.getItem(artist+"|"+album+"|"+song);
+      if (offlineLyrics && OLLyrics) {
         $('#gpml_lyrics_content').html(offlineLyrics);
       } else {
         $('#gpml_lyrics_content').html('<em>Searching for lyrics...</em>');
 
         this.usePlugin(0, artist, album, song);      
       }
-    }
+	
+	}
   }
   
   var self = this;
@@ -236,6 +239,7 @@ LyricsWikiPlugin.prototype.parseLyrics = function(responseText, artist, album, s
   $('div', lyrics).each(function() {$(this).remove()});
   $('p', lyrics).each(function() {$(this).remove()});
   $('span', lyrics).each(function() {$(this).remove()});
+  $('script', lyrics).each(function() {$(this).remove()});
   lyrics = $(lyrics).html();  
   
   lyrics = lyrics.replace(/\n/g, "").replace(/<!--.*?-->/gm, "").trim().replace(/<br.*?>/g, "\n").trim().replace(/<.+?>.+?<\/.+?>/g, "");
@@ -256,7 +260,7 @@ TerraPlugin.prototype.getMethod = function() {
   return "GET";
 }
 TerraPlugin.prototype.parseLyrics = function(responseText, artist, album, song) {
-  var lyrics = $('#letra > p', responseText);
+  var lyrics = $('#letra', responseText);
   lyrics = $(lyrics).html();
   if (!lyrics) return;
   lyrics = lyrics.replace(/\n/g, "").replace(/<br.*?>/g, "\n").replace(/<.+?>.+?<\/.+?>/g, "");
